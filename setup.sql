@@ -1,7 +1,7 @@
 CREATE SCHEMA pipeline_mini;
 CREATE TABLE pipeline_mini.ticket_sales(
 	ticket_id INT,
-    trans_date INT,
+    trans_date DATE,
     event_id INT,
     event_name VARCHAR(50),
     event_date DATE,

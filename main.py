@@ -3,6 +3,7 @@ import yaml
 import pathlib
 import logging
 from sys import stdout
+import csv
 
 logger = logging.getLogger(__name__)
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(funcName)s() - %(levelname)s - %(message)s')
@@ -44,3 +45,22 @@ def get_db_connection(secret_path, database):
         logging.warning('Error while connecting to database for job tracker', exc_info=error)
     
     return connection
+
+
+def load_third_party(connection, file_path_csv):
+    cursor = connection.cursor()
+    
+    with open(file_path_csv, 'r') as file:
+        reader = csv.reader(file)
+        for row in reader:
+            query = ('''INSERT INTO ticket_sales (ticket_id, trans_date, event_id, event_name, event_date, event_type, event_city, customer_id, price, num_tickets)
+            VALUES(%s, '%s', %s, '%s', '%s', '%s', '%s', %s, %s, %s)''') %tuple(row)
+            try:
+                cursor.execute(query)
+            except Exception as e:
+                logger.error('An error occurred while inserting the row', exc_info=e)
+
+    connection.commit()
+    cursor.close()
+    return
+
