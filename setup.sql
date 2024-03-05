@@ -9,6 +9,7 @@ CREATE TABLE pipeline_mini.ticket_sales(
     event_city VARCHAR(20),
     customer_id INT,
     price DECIMAL,
-    num_tickets INT
+    num_tickets INT,
+    PRIMARY KEY (ticket_id)
 )
 ;

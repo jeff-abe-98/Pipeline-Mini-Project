@@ -4,6 +4,7 @@ import pathlib
 import logging
 from sys import stdout
 import csv
+import datetime
 
 logger = logging.getLogger(__name__)
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(funcName)s() - %(levelname)s - %(message)s')
@@ -64,3 +65,27 @@ def load_third_party(connection, file_path_csv):
     cursor.close()
     return
 
+def query_popular_tickets(connection):
+    today = datetime.date.today()
+    # Get the most popular ticket in the past month
+    sql_statement = '''
+    SELECT event_name
+    FROM ticket_sales
+    WHERE DATE_FORMAT(event_date,'%Y-%m-01') = DATE('{}-01')
+    ORDER BY num_tickets DESC
+    LIMIT 3
+    '''.format(today.strftime('%Y-%m'))
+    logger.info(sql_statement)
+    cursor = connection.cursor()
+    cursor.execute(sql_statement)
+    records = cursor.fetchall()
+    cursor.close()
+    return records
+
+
+if __name__ == '__main__':
+    conn = get_db_connection('secrets.yml', 'pipeline_mini')
+    load_third_party(conn, 'Data/third_party_sales_1.csv')
+    results = query_popular_tickets(conn)
+    results_tuple = tuple(row[0] for row in results)
+    print(results_tuple)
