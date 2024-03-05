@@ -54,8 +54,26 @@ def load_third_party(connection, file_path_csv):
     with open(file_path_csv, 'r') as file:
         reader = csv.reader(file)
         for row in reader:
-            query = ('''INSERT INTO ticket_sales (ticket_id, trans_date, event_id, event_name, event_date, event_type, event_city, customer_id, price, num_tickets)
-            VALUES(%s, '%s', %s, '%s', '%s', '%s', '%s', %s, %s, %s)''') %tuple(row)
+            query = ('''
+            INSERT INTO ticket_sales
+            WITH check_row AS (
+                SELECT 
+                    %s AS ticket_id, 
+                    '%s' AS trans_date, 
+                    %s AS event_id, 
+                    '%s' AS event_name, 
+                    '%s' AS event_date, 
+                    '%s' AS event_type, 
+                    '%s' AS event_city, 
+                    %s AS customer_id,
+                    %s AS price,
+                    %s AS num_tickets
+                )
+            SELECT * FROM check_row t1
+                WHERE NOT EXISTS(
+                     SELECT 1 FROM ticket_sales t2 WHERE t1.ticket_id = t2.ticket_id
+                )
+            ''') %tuple(row)
             try:
                 cursor.execute(query)
             except Exception as e:
@@ -69,11 +87,14 @@ def query_popular_tickets(connection):
     today = datetime.date.today()
     # Get the most popular ticket in the past month
     sql_statement = '''
-    SELECT event_name
+    WITH popular_events AS(
+    SELECT event_id
     FROM ticket_sales
     WHERE DATE_FORMAT(event_date,'%Y-%m-01') = DATE('{}-01')
-    ORDER BY num_tickets DESC
-    LIMIT 3
+    GROUP BY event_id
+    ORDER BY SUM(num_tickets) DESC)
+
+    SELECT event_name FROM ticket_sales WHERE event_id IN (SELECT * FROM popular_events)
     '''.format(today.strftime('%Y-%m'))
     logger.info(sql_statement)
     cursor = connection.cursor()
@@ -87,5 +108,8 @@ if __name__ == '__main__':
     conn = get_db_connection('secrets.yml', 'pipeline_mini')
     load_third_party(conn, 'Data/third_party_sales_1.csv')
     results = query_popular_tickets(conn)
-    results_tuple = tuple(row[0] for row in results)
-    print(results_tuple)
+    results_list = [row[0] for row in results]
+    display = 'Here are the most popular tickets in the past month:'
+    for item in results_list:
+        display += f'\n  - {item}'
+    print(display)
