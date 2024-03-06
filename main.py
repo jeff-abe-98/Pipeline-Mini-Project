@@ -1,10 +1,10 @@
 import mysql.connector
 import yaml
-import pathlib
 import logging
 from sys import stdout
 import csv
 import datetime
+from datetime import timedelta
 
 logger = logging.getLogger(__name__)
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(funcName)s() - %(levelname)s - %(message)s')
@@ -26,11 +26,9 @@ def get_db_connection(secret_path, database):
     Returns:
         MySQLConnection object: Connection to the local database specified
     '''
-    dir = pathlib.Path.cwd()
-    config = dir / secret_path
 
     connection = None
-    with config.open('r') as file:
+    with open(secret_path, 'r') as file:
         secrets = yaml.safe_load(file)
 
     username = secrets['mysql_user']
@@ -49,6 +47,16 @@ def get_db_connection(secret_path, database):
 
 
 def load_third_party(connection, file_path_csv):
+    '''
+    Function to load data from a csv
+
+    Args:
+        connection (object) : MySQLConnection Object
+        file_path_csv (str) : Relative path to the csv file 
+
+    Returns:
+        None
+    '''
     cursor = connection.cursor()
     
     with open(file_path_csv, 'r') as file:
@@ -84,19 +92,19 @@ def load_third_party(connection, file_path_csv):
     return
 
 def query_popular_tickets(connection):
+    '''
+    Function to return an ordered list of event names with the highest number of tickets sold
+    
+    Args:
+        connection (object) : MySQLConnection Object 
+    '''
     today = datetime.date.today()
     # Get the most popular ticket in the past month
-    sql_statement = '''
-    WITH popular_events AS(
-    SELECT event_id
-    FROM ticket_sales
-    WHERE DATE_FORMAT(event_date,'%Y-%m-01') = DATE('{}-01')
-    GROUP BY event_id
-    ORDER BY SUM(num_tickets) DESC)
-
-    SELECT event_name FROM ticket_sales WHERE event_id IN (SELECT * FROM popular_events)
-    '''.format(today.strftime('%Y-%m'))
-    logger.info(sql_statement)
+    sql_statement = '''SELECT event_name
+                        FROM ticket_sales
+                        WHERE DATE_FORMAT(event_date,'%Y-%m-01') = DATE_ADD('{}-01', INTERVAL -1 MONTH)
+                        GROUP BY event_name
+                        ORDER BY SUM(num_tickets) DESC'''.format(today.strftime('%Y-%m'))
     cursor = connection.cursor()
     cursor.execute(sql_statement)
     records = cursor.fetchall()
