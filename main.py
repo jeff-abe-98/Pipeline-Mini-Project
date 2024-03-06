@@ -7,7 +7,7 @@ import datetime
 from datetime import timedelta
 
 logger = logging.getLogger(__name__)
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(funcName)s() - %(levelname)s - %(message)s')
+formatter = logging.Formatter('%(asctime)s - %(funcName)s() - %(levelname)s - %(message)s')
 handler = logging.StreamHandler(stdout)
 logger.setLevel(logging.INFO)
 handler.setLevel(logging.INFO)
@@ -40,8 +40,9 @@ def get_db_connection(secret_path, database):
                                              host='localhost',
                                              port='3306',
                                              database=database)
+        logger.info('Connection with database established')
     except Exception as error:
-        logging.warning('Error while connecting to database for job tracker', exc_info=error)
+        logger.warning('Error while connecting to database for job tracker', exc_info=error)
     
     return connection
 
@@ -58,34 +59,24 @@ def load_third_party(connection, file_path_csv):
         None
     '''
     cursor = connection.cursor()
-    
+    cursor.execute('SELECT ticket_id FROM ticket_sales')
+    keys = {str(row[0]) for row in cursor.fetchall()}
+    rows_loaded = 0
     with open(file_path_csv, 'r') as file:
         reader = csv.reader(file)
         for row in reader:
+            if row[0] in keys:
+                continue
             query = ('''
-            INSERT INTO ticket_sales
-            WITH check_row AS (
-                SELECT 
-                    %s AS ticket_id, 
-                    '%s' AS trans_date, 
-                    %s AS event_id, 
-                    '%s' AS event_name, 
-                    '%s' AS event_date, 
-                    '%s' AS event_type, 
-                    '%s' AS event_city, 
-                    %s AS customer_id,
-                    %s AS price,
-                    %s AS num_tickets
-                )
-            SELECT * FROM check_row t1
-                WHERE NOT EXISTS(
-                     SELECT 1 FROM ticket_sales t2 WHERE t1.ticket_id = t2.ticket_id
-                )
+            INSERT INTO ticket_sales (ticket_id, trans_date, event_id, event_name, event_date, event_type, event_city, customer_id, price,num_tickets)
+            VALUES(%s , '%s', %s, '%s' ,'%s' ,'%s' ,'%s' ,%s ,%s ,%s)
             ''') %tuple(row)
             try:
                 cursor.execute(query)
+                rows_loaded +=1
             except Exception as e:
                 logger.error('An error occurred while inserting the row', exc_info=e)
+    logger.info(f'{rows_loaded} rows loaded into table ticket_sales')
 
     connection.commit()
     cursor.close()
@@ -106,9 +97,13 @@ def query_popular_tickets(connection):
                         GROUP BY event_name
                         ORDER BY SUM(num_tickets) DESC'''.format(today.strftime('%Y-%m'))
     cursor = connection.cursor()
-    cursor.execute(sql_statement)
-    records = cursor.fetchall()
-    cursor.close()
+    try:
+        cursor.execute(sql_statement)
+        records = cursor.fetchall()
+        cursor.close()
+        logger.info('Query executed')
+    except Exception as e:
+        logger.error('Query execution failed', exc_info=e)
     return records
 
 
