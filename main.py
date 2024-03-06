@@ -28,13 +28,13 @@ def get_db_connection(secret_path, database):
     '''
 
     connection = None
-    with open(secret_path, 'r') as file:
-        secrets = yaml.safe_load(file)
-
-    username = secrets['mysql_user']
-    password = secrets['mysql_pass']
-
     try:
+        with open(secret_path, 'r') as file:
+            secrets = yaml.safe_load(file)
+
+        username = secrets['mysql_user']
+        password = secrets['mysql_pass']
+
         connection = mysql.connector.connect(user=username,
                                              password=password,
                                              host='localhost',
@@ -115,7 +115,7 @@ def query_popular_tickets(connection):
 if __name__ == '__main__':
     conn = get_db_connection('secrets.yml', 'pipeline_mini')
     load_third_party(conn, 'Data/third_party_sales_1.csv')
-    results = query_popular_tickets(conn)
+    results = query_popular_tickets(None)
     results_list = [row[0] for row in results]
     display = 'Here are the most popular tickets in the past month:'
     for item in results_list:
