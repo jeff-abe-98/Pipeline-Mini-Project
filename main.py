@@ -115,7 +115,7 @@ def query_popular_tickets(connection):
 if __name__ == '__main__':
     conn = get_db_connection('secrets.yml', 'pipeline_mini')
     load_third_party(conn, 'Data/third_party_sales_1.csv')
-    results = query_popular_tickets(None)
+    results = query_popular_tickets(conn)
     results_list = [row[0] for row in results]
     display = 'Here are the most popular tickets in the past month:'
     for item in results_list:
