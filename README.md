@@ -22,6 +22,6 @@ pyyaml
 
 Tests are written to run with pytest, and can be run by calling pytest in the terminal from the project directory
 
-## Useage
+## Usage
 
 The project can be run by calling the script from a command line
