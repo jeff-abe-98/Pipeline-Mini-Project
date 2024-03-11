@@ -89,13 +89,16 @@ def query_popular_tickets(connection):
     Args:
         connection (object) : MySQLConnection Object 
     '''
-    today = datetime.date.today()
+    #today = datetime.date.today()
+    today = datetime.date(2020,9,15)
     # Get the most popular ticket in the past month
     sql_statement = '''SELECT event_name
                         FROM ticket_sales
-                        WHERE DATE_FORMAT(event_date,'%Y-%m-01') = DATE_ADD('{}-01', INTERVAL -1 MONTH)
+                        WHERE DATE_FORMAT(trans_date,'%Y-%m-01') = DATE_ADD('{}-01', INTERVAL -1 MONTH)
                         GROUP BY event_name
-                        ORDER BY SUM(num_tickets) DESC'''.format(today.strftime('%Y-%m'))
+                        ORDER BY SUM(num_tickets) DESC
+                        LIMIT 3'''.format(today.strftime('%Y-%m'))
+    
     cursor = connection.cursor()
     try:
         cursor.execute(sql_statement)
